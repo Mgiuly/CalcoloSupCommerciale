@@ -189,8 +189,11 @@ export const generatePDF = async ({
     language = 'it'
 }: GenerateReportParams): Promise<Buffer> => {
     try {
+        console.log('Starting PDF generation...');
+        
         // Read the template
         const templatePath = path.join(process.cwd(), 'src/templates/report-template.html');
+        console.log('Template path:', templatePath);
         let template = await fs.readFile(templatePath, 'utf-8');
 
         // Read the logo
@@ -199,10 +202,11 @@ export const generatePDF = async ({
         try {
             const logoBuffer = await fs.readFile(logoPath);
             logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
-        } catch {
-            console.warn('Logo not found, continuing without it');
+        } catch (error) {
+            console.warn('Logo not found:', error);
         }
 
+        console.log('Preparing template data...');
         const t = translations[language];
         const unit = language === 'en' ? 'sq ft' : 'mq';
 
@@ -215,20 +219,71 @@ export const generatePDF = async ({
         template = template.replace('{{CHART_PLACEHOLDER}}', await generateChartImage(chartData, language));
         template = template.replace('{{DISCLAIMER}}', t.labels.disclaimer);
 
-        // Launch browser with AWS Lambda Chrome
+        console.log('Launching browser...');
+        
+        // Configure Chrome AWS Lambda
+        const executablePath = await chromium.executablePath();
+        console.log('Chrome executable path:', executablePath);
+
         const browser = await puppeteer.launch({
-            args: chromium.args,
-            defaultViewport: chromium.defaultViewport,
-            executablePath: await chromium.executablePath(),
-            headless: true as boolean | 'shell',
+            args: [
+                ...chromium.args,
+                '--autoplay-policy=user-gesture-required',
+                '--disable-background-networking',
+                '--disable-background-timer-throttling',
+                '--disable-backgrounding-occluded-windows',
+                '--disable-breakpad',
+                '--disable-client-side-phishing-detection',
+                '--disable-component-update',
+                '--disable-default-apps',
+                '--disable-dev-shm-usage',
+                '--disable-domain-reliability',
+                '--disable-extensions',
+                '--disable-features=AudioServiceOutOfProcess',
+                '--disable-hang-monitor',
+                '--disable-ipc-flooding-protection',
+                '--disable-notifications',
+                '--disable-offer-store-unmasked-wallet-cards',
+                '--disable-popup-blocking',
+                '--disable-print-preview',
+                '--disable-prompt-on-repost',
+                '--disable-renderer-backgrounding',
+                '--disable-setuid-sandbox',
+                '--disable-speech-api',
+                '--disable-sync',
+                '--hide-scrollbars',
+                '--ignore-gpu-blacklist',
+                '--metrics-recording-only',
+                '--mute-audio',
+                '--no-default-browser-check',
+                '--no-first-run',
+                '--no-pings',
+                '--no-sandbox',
+                '--no-zygote',
+                '--password-store=basic',
+                '--use-gl=swiftshader',
+                '--use-mock-keychain',
+            ],
+            defaultViewport: {
+                width: 1200,
+                height: 800,
+                deviceScaleFactor: 1,
+            },
+            executablePath,
+            headless: true,
+            protocolTimeout: 30000,
         });
 
+        console.log('Creating new page...');
         const page = await browser.newPage();
+        
+        console.log('Setting content...');
         await page.setContent(template, {
-            waitUntil: ['networkidle0', 'load', 'domcontentloaded']
+            waitUntil: ['networkidle0', 'load', 'domcontentloaded'],
+            timeout: 30000,
         });
 
-        // Generate PDF
+        console.log('Generating PDF...');
         const pdf = await page.pdf({
             format: 'A4',
             printBackground: true,
@@ -237,16 +292,23 @@ export const generatePDF = async ({
                 right: '20mm',
                 bottom: '20mm',
                 left: '20mm'
-            }
+            },
+            timeout: 30000,
         });
 
+        console.log('Closing browser...');
         await browser.close();
+        
+        console.log('PDF generation completed successfully');
         return Buffer.from(pdf);
     } catch (error: unknown) {
+        console.error('Detailed error in PDF generation:');
         if (error instanceof Error) {
-            console.error('Error generating PDF:', error.message);
+            console.error('Error name:', error.name);
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
         } else {
-            console.error('Unknown error generating PDF');
+            console.error('Unknown error type:', error);
         }
         throw error;
     }

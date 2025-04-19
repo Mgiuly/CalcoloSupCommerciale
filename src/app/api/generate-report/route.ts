@@ -35,12 +35,20 @@ interface RequestData {
 }
 
 export async function POST(request: Request) {
+    console.log('Starting report generation request...');
     try {
         const { format, data, language } = await request.json() as RequestData;
         const selectedLanguage = language;
         
         if (format === 'pdf') {
+            console.log('Processing PDF format request...');
             try {
+                console.log('Calling PDF generator with data:', {
+                    totalArea: data.totalArea,
+                    detailsCount: Object.keys(data.details).length,
+                    language: selectedLanguage
+                });
+
                 const pdf = await generatePDF({
                     totalArea: data.totalArea,
                     details: Object.entries(data.details).map(([name, detail]) => ({
@@ -55,9 +63,11 @@ export async function POST(request: Request) {
                 });
 
                 if (!pdf) {
+                    console.error('PDF generation returned null or undefined');
                     throw new Error('PDF generation failed - no data returned');
                 }
 
+                console.log('PDF generated successfully, sending response...');
                 return new NextResponse(pdf, {
                     headers: {
                         'Content-Type': 'application/pdf',
@@ -65,12 +75,20 @@ export async function POST(request: Request) {
                     }
                 });
             } catch (pdfError: unknown) {
-                console.error('PDF Generation error:', pdfError);
+                console.error('PDF Generation error details:');
+                if (pdfError instanceof Error) {
+                    console.error('Error name:', pdfError.name);
+                    console.error('Error message:', pdfError.message);
+                    console.error('Error stack:', pdfError.stack);
+                } else {
+                    console.error('Unknown error type:', pdfError);
+                }
+                
                 return NextResponse.json(
                     { 
                         error: 'Failed to generate PDF',
                         details: process.env.NODE_ENV === 'development' 
-                            ? (pdfError instanceof Error ? pdfError.message : 'Unknown error') 
+                            ? (pdfError instanceof Error ? pdfError.message : String(pdfError)) 
                             : undefined
                     }, 
                     { status: 500 }
@@ -122,12 +140,20 @@ export async function POST(request: Request) {
             });
         }
     } catch (error: unknown) {
-        console.error('Request processing error:', error);
+        console.error('Request processing error details:');
+        if (error instanceof Error) {
+            console.error('Error name:', error.name);
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
+        } else {
+            console.error('Unknown error type:', error);
+        }
+        
         return NextResponse.json(
             { 
                 error: 'Failed to process request',
                 details: process.env.NODE_ENV === 'development' 
-                    ? (error instanceof Error ? error.message : 'Unknown error') 
+                    ? (error instanceof Error ? error.message : String(error)) 
                     : undefined
             }, 
             { status: 400 }
