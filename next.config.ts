@@ -14,11 +14,14 @@ const config: NextConfig = {
     }
   },
   webpack: (config) => {
-    // Exclude chrome-aws-lambda source map files
+    // Exclude source map files
     config.module.rules.push({
       test: /\.map$/,
       use: ['ignore-loader'],
     });
+
+    // Handle Puppeteer dependencies
+    config.externals = [...(config.externals || []), 'puppeteer', 'puppeteer-core'];
 
     return config;
   }

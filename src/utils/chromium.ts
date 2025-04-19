@@ -1,38 +1,30 @@
 import puppeteerCore, { Browser } from 'puppeteer-core';
-import puppeteer from 'puppeteer';
 import chromium from '@sparticuz/chromium-min';
 
 let browser: Browser | null = null;
 
 const chromiumArgs = [
     '--no-sandbox',
-    '--disable-setuid-sandbox'
+    '--disable-setuid-sandbox',
+    '--disable-gpu',
+    '--disable-dev-shm-usage',
+    '--single-process'
 ];
 
 export async function getBrowser() {
     if (browser) return browser;
 
-    if (process.env.NEXT_PUBLIC_VERCEL_ENVIRONMENT === 'production') {
-        // Production environment (Vercel)
+    try {
         browser = await puppeteerCore.launch({
             args: chromiumArgs,
             executablePath: await chromium.executablePath(),
-            headless: true
+            headless: true,
+            ignoreHTTPSErrors: true
         });
-    } else {
-        // Local development environment
-        const localChromePath = process.platform === 'win32'
-            ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-            : process.platform === 'linux'
-                ? '/usr/bin/google-chrome'
-                : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-
-        browser = await puppeteer.launch({
-            args: chromiumArgs,
-            executablePath: localChromePath,
-            headless: true
-        }) as unknown as Browser;
+        
+        return browser;
+    } catch (error) {
+        console.error('Error launching browser:', error);
+        throw error;
     }
-
-    return browser;
 } 

@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "analyze": "ANALYZE=true next build"
+    "analyze": "ANALYZE=true next build",
+    "postinstall": "node node_modules/puppeteer/install.js"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
