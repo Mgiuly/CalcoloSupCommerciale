@@ -24,6 +24,13 @@ interface GenerateReportParams {
     language?: 'it' | 'en';
 }
 
+interface CalculationData {
+    totalArea: number;
+    details: AreaDetail[];
+    chartData: ChartData;
+    language?: 'it' | 'en';
+}
+
 const formatNumber = (num: number, language: 'it' | 'en'): string => {
     const value = language === 'en' ? num * 10.7639 : num;
     return value.toLocaleString(language === 'en' ? 'en-US' : 'it-IT', { 
@@ -181,93 +188,31 @@ const generateChartImage = async (chartData: ChartData, language: 'it' | 'en'): 
     return chartHtml;
 };
 
-export const generatePDF = async ({
-    totalArea,
-    details,
-    chartData,
-    language = 'it'
-}: GenerateReportParams): Promise<Buffer> => {
+export async function generatePDF(data: CalculationData): Promise<Buffer> {
+    const browser = await getBrowser();
+    const page = await browser.newPage();
+    
     try {
-        console.log('Starting PDF generation...');
+        const html = await generateHTML(data);
+        await page.setContent(html, { waitUntil: 'networkidle0' });
         
-        const t = translations[language];
-        const unit = language === 'en' ? 'sq ft' : 'mq';
-
-        const html = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-                <style>
-                    body { font-family: Arial, sans-serif; padding: 20px; }
-                    .container { max-width: 800px; margin: 0 auto; }
-                    .header { text-align: center; margin-bottom: 30px; }
-                    .chart-container { width: 100%; height: 400px; margin-bottom: 30px; }
-                    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-                    th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
-                    th { background-color: #f8f9fa; }
-                    .disclaimer { font-size: 0.8em; color: #666; margin-top: 20px; }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h1>${t.title}</h1>
-                        <p><strong>${t.totalArea}:</strong> ${formatNumber(totalArea, language)} ${unit}</p>
-                    </div>
-                    ${generateCalculationDetails(details, language)}
-                    <div class="chart-container">
-                        ${await generateChartImage(chartData, language)}
-                    </div>
-                    <div class="disclaimer">
-                        ${t.labels.disclaimer}
-                    </div>
-                </div>
-            </body>
-            </html>
-        `;
-
-        console.log('Launching browser...');
-        const browser = await getBrowser();
-
-        console.log('Creating new page...');
-        const page = await browser.newPage();
-        
-        console.log('Setting content...');
-        await page.setContent(html, {
-            waitUntil: ['networkidle0', 'load', 'domcontentloaded']
-        });
-
-        console.log('Generating PDF...');
         const pdf = await page.pdf({
             format: 'a4',
             printBackground: true,
             margin: {
-                top: '20mm',
-                right: '20mm',
-                bottom: '20mm',
-                left: '20mm'
+                top: '20px',
+                right: '20px',
+                bottom: '20px',
+                left: '20px'
             }
         });
-
-        console.log('Closing browser...');
-        await browser.close();
         
-        console.log('PDF generation completed successfully');
-        return Buffer.from(pdf);
-    } catch (error: unknown) {
-        console.error('Detailed error in PDF generation:');
-        if (error instanceof Error) {
-            console.error('Error name:', error.name);
-            console.error('Error message:', error.message);
-            console.error('Error stack:', error.stack);
-        } else {
-            console.error('Unknown error type:', error);
-        }
-        throw error;
+        return pdf;
+    } finally {
+        await page.close();
+        await browser.close();
     }
-};
+}
 
 export const generateHTML = async ({
     totalArea,
