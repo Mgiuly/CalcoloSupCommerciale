@@ -1,4 +1,5 @@
-import puppeteer from 'puppeteer';
+import chromium from 'chrome-aws-lambda';
+import puppeteer from 'puppeteer-core';
 import fs from 'fs/promises';
 import path from 'path';
 import { ChartData } from '../types/ChartData';
@@ -230,8 +231,17 @@ export const generatePDF = async ({
 
         console.log('Launching browser...');
         
+        const executablePath = process.env.CHROME_EXECUTABLE_PATH || await chromium.executablePath;
+
         const browser = await puppeteer.launch({
+            args: chromium.args,
+            executablePath,
             headless: true,
+            defaultViewport: {
+                width: 1200,
+                height: 800,
+                deviceScaleFactor: 1,
+            },
         });
 
         console.log('Creating new page...');
@@ -239,7 +249,7 @@ export const generatePDF = async ({
         
         console.log('Setting content...');
         await page.setContent(html, {
-            waitUntil: ['networkidle0', 'load', 'domcontentloaded'],
+            waitUntil: ['networkidle0', 'load', 'domcontentloaded']
         });
 
         console.log('Generating PDF...');
