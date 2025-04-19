@@ -189,8 +189,22 @@ const getBrowserInstance = async () => {
     if (isVercel) {
         // Running on Vercel, use @sparticuz/chromium-min
         return puppeteer.launch({
-            args: chromium.args,
-            defaultViewport: chromium.defaultViewport,
+            args: [
+                ...chromium.args,
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--no-first-run',
+                '--no-zygote',
+                '--single-process',
+                '--disable-extensions'
+            ],
+            defaultViewport: {
+                width: 1200,
+                height: 800,
+                deviceScaleFactor: 1,
+            },
             executablePath: await chromium.executablePath(
                 'https://github.com/Sparticuz/chromium/releases/download/v121.0.0/chromium-v121.0.0-pack.tar'
             ),
