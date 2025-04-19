@@ -64,12 +64,14 @@ export async function POST(request: Request) {
                         'Content-Disposition': `attachment; filename=report_${selectedLanguage}.pdf`
                     }
                 });
-            } catch (pdfError) {
+            } catch (pdfError: unknown) {
                 console.error('PDF Generation error:', pdfError);
                 return NextResponse.json(
                     { 
                         error: 'Failed to generate PDF',
-                        details: process.env.NODE_ENV === 'development' ? pdfError.message : undefined
+                        details: process.env.NODE_ENV === 'development' 
+                            ? (pdfError instanceof Error ? pdfError.message : 'Unknown error') 
+                            : undefined
                     }, 
                     { status: 500 }
                 );
@@ -119,12 +121,14 @@ export async function POST(request: Request) {
                 }
             });
         }
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Request processing error:', error);
         return NextResponse.json(
             { 
                 error: 'Failed to process request',
-                details: process.env.NODE_ENV === 'development' ? error.message : undefined
+                details: process.env.NODE_ENV === 'development' 
+                    ? (error instanceof Error ? error.message : 'Unknown error') 
+                    : undefined
             }, 
             { status: 400 }
         );
