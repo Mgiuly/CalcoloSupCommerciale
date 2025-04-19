@@ -24,3 +24,25 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+input[type="number"] {
+  @apply px-3 py-2 border border-gray-300 rounded-md;
+}
+
+input[type="number"]:focus {
+  @apply outline-none ring-2 ring-blue-500 border-blue-500;
+}
+
+/* Remove spinners */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+}
