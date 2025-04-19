@@ -1,9 +1,9 @@
 import puppeteer, { PaperFormat } from 'puppeteer-core';
-import chrome from 'chrome-aws-lambda';
 import fs from 'fs/promises';
 import path from 'path';
 import { ChartData } from '../types/ChartData';
 import { translations, Translation } from './translations';
+import { getBrowser } from './chromium';
 
 interface AreaDetail {
     name: string;
@@ -182,44 +182,6 @@ const generateChartImage = async (chartData: ChartData, language: 'it' | 'en'): 
     return chartHtml;
 };
 
-const getBrowserInstance = async () => {
-    // Check if running on Vercel
-    const isVercel = process.env.VERCEL === '1';
-
-    if (isVercel) {
-        // Running on Vercel, use chrome-aws-lambda
-        return puppeteer.launch({
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--single-process',
-                '--no-zygote',
-                '--disable-gpu'
-            ],
-            defaultViewport: {
-                width: 1200,
-                height: 800,
-                deviceScaleFactor: 1,
-            },
-            executablePath: await chrome.executablePath,
-            headless: true,
-            ignoreHTTPSErrors: true,
-        });
-    } else {
-        // Running locally
-        const executablePath = process.env.CHROME_EXECUTABLE_PATH;
-        if (!executablePath) {
-            throw new Error('CHROME_EXECUTABLE_PATH environment variable is not set');
-        }
-        return puppeteer.launch({
-            executablePath,
-            args: ['--no-sandbox'],
-            headless: true
-        });
-    }
-};
-
 export const generatePDF = async ({
     totalArea,
     details,
@@ -268,7 +230,7 @@ export const generatePDF = async ({
         `;
 
         console.log('Launching browser...');
-        const browser = await getBrowserInstance();
+        const browser = await getBrowser();
 
         console.log('Creating new page...');
         const page = await browser.newPage();
@@ -324,27 +286,28 @@ export const generateHTML = async ({
         let logoBase64 = '';
         try {
             const logoBuffer = await fs.readFile(logoPath);
-            logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
-        } catch {
-            console.warn('Logo not found, using fallback text');
-            logoBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+            logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`
+        } catch (error) {
+            console.error('Error reading logo:', error);
         }
-        
-        // Generate chart image
-        const chartImage = await generateChartImage(chartData, language);
 
-        // Replace placeholders
-        template = template
-            .replace('{{LOGO_BASE64}}', logoBase64)
-            .replace('{{lang}}', language)
-            .replace('{{unit}}', language === 'en' ? 'sq ft' : 'mq')
-            .replace('{{TOTAL_AREA}}', formatNumber(totalArea, language))
-            .replace('{{CALCULATION_DETAILS}}', generateCalculationDetails(details, language))
-            .replace('{{CHART_IMAGE}}', chartImage);
+        // Replace placeholders in the template with actual data
+        template = template.replace('{{totalArea}}', formatNumber(totalArea, language));
+        template = template.replace('{{details}}', generateCalculationDetails(details, language));
+        template = template.replace('{{chartImage}}', await generateChartImage(chartData, language));
+        template = template.replace('{{disclaimer}}', translations[language].labels.disclaimer);
+        template = template.replace('{{logo}}', logoBase64);
 
         return template;
-    } catch (error) {
-        console.error('Error generating HTML:', error);
+    } catch (error: unknown) {
+        console.error('Detailed error in HTML generation:');
+        if (error instanceof Error) {
+            console.error('Error name:', error.name);
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
+        } else {
+            console.error('Unknown error type:', error);
+        }
         throw error;
     }
-}; 
+};
