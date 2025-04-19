@@ -197,7 +197,7 @@ export async function generatePDF(data: CalculationData): Promise<Buffer> {
         await page.setContent(html, { waitUntil: 'networkidle0' });
         
         const pdf = await page.pdf({
-            format: 'a4',
+            format: 'A4',
             printBackground: true,
             margin: {
                 top: '20px',
