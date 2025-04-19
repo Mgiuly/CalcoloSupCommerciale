@@ -190,6 +190,9 @@ const generateChartImage = async (chartData: ChartData, language: 'it' | 'en'): 
 
 export async function generatePDF(data: CalculationData): Promise<Buffer> {
     const browser = await getBrowser();
+    if (!browser) {
+        throw new Error('Failed to initialize browser');
+    }
     const page = await browser.newPage();
     
     try {
@@ -200,17 +203,20 @@ export async function generatePDF(data: CalculationData): Promise<Buffer> {
             format: 'A4',
             printBackground: true,
             margin: {
-                top: '20px',
-                right: '20px',
-                bottom: '20px',
-                left: '20px'
-            }
+                top: 20,
+                right: 20,
+                bottom: 20,
+                left: 20
+            },
+            preferCSSPageSize: true
         });
         
         return pdf;
     } finally {
         await page.close();
-        await browser.close();
+        if (browser) {
+            await browser.close();
+        }
     }
 }
 
