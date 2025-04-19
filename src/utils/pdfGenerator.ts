@@ -199,7 +199,7 @@ export const generatePDF = async ({
         try {
             const logoBuffer = await fs.readFile(logoPath);
             logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
-        } catch (error) {
+        } catch {
             console.warn('Logo not found, continuing without it');
         }
 
@@ -241,9 +241,13 @@ export const generatePDF = async ({
         });
 
         await browser.close();
-        return pdf;
-    } catch (error) {
-        console.error('Error generating PDF:', error);
+        return Buffer.from(pdf);
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error('Error generating PDF:', error.message);
+        } else {
+            console.error('Unknown error generating PDF');
+        }
         throw error;
     }
 };
