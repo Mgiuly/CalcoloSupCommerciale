@@ -42,14 +42,16 @@ export async function POST(request: Request) {
         const { format, data, language } = await request.json() as RequestData;
         
         if (format === 'pdf') {
-            // For PDF generation, return a 307 temporary redirect to the PDF endpoint
+            // For PDF generation, forward the request to the PDF endpoint
             const url = new URL('/api/pdf', request.url);
-            return NextResponse.redirect(url, {
-                status: 307,
+            const pdfRequest = new Request(url, {
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                }
+                },
+                body: JSON.stringify({ data, language })
             });
+            return fetch(pdfRequest);
         }
 
         // Generate text report
@@ -107,7 +109,7 @@ export async function POST(request: Request) {
                 runtime: 'edge'
             }, 
             { 
-                status: 400,
+                status: 500,
                 headers: {
                     'Cache-Control': 'no-store'
                 }
