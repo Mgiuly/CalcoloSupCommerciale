@@ -220,7 +220,7 @@ export const generatePDF = async ({
             args: chromium.args,
             defaultViewport: chromium.defaultViewport,
             executablePath: await chromium.executablePath(),
-            headless: chromium.headless,
+            headless: true as boolean | 'shell',
         });
 
         const page = await browser.newPage();

@@ -7,7 +7,7 @@ declare module '@sparticuz/chromium' {
             deviceScaleFactor: number;
         };
         executablePath: () => Promise<string>;
-        headless: boolean | 'new';
+        headless: boolean | 'shell';
     };
     export default chromium;
 } 
