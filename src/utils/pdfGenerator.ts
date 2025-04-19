@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer-core';
+import puppeteer, { PaperFormat } from 'puppeteer-core';
 import chrome from 'chrome-aws-lambda';
 import fs from 'fs/promises';
 import path from 'path';
@@ -280,7 +280,7 @@ export const generatePDF = async ({
 
         console.log('Generating PDF...');
         const pdf = await page.pdf({
-            format: 'a4',
+            format: 'a4' as PaperFormat,
             printBackground: true,
             margin: {
                 top: '20mm',
