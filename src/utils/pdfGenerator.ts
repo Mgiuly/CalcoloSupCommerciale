@@ -1,4 +1,3 @@
-import chromium from 'chrome-aws-lambda';
 import puppeteer from 'puppeteer-core';
 import fs from 'fs/promises';
 import path from 'path';
@@ -182,6 +181,40 @@ const generateChartImage = async (chartData: ChartData, language: 'it' | 'en'): 
     return chartHtml;
 };
 
+const getBrowserInstance = async () => {
+    // Check if running on Vercel
+    const isVercel = process.env.VERCEL === '1';
+
+    if (isVercel) {
+        // Running on Vercel, use their Chrome
+        return puppeteer.launch({
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run',
+                '--no-zygote',
+                '--single-process',
+                '--disable-gpu'
+            ],
+            executablePath: '/var/task/node_modules/puppeteer-core/.local-chromium/linux-119.0.6045.105/chrome-linux64/chrome',
+            headless: true
+        });
+    } else {
+        // Running locally
+        const executablePath = process.env.CHROME_EXECUTABLE_PATH;
+        if (!executablePath) {
+            throw new Error('CHROME_EXECUTABLE_PATH environment variable is not set');
+        }
+        return puppeteer.launch({
+            executablePath,
+            args: ['--no-sandbox'],
+            headless: true
+        });
+    }
+};
+
 export const generatePDF = async ({
     totalArea,
     details,
@@ -230,19 +263,7 @@ export const generatePDF = async ({
         `;
 
         console.log('Launching browser...');
-        
-        const executablePath = process.env.CHROME_EXECUTABLE_PATH || await chromium.executablePath;
-
-        const browser = await puppeteer.launch({
-            args: chromium.args,
-            executablePath,
-            headless: true,
-            defaultViewport: {
-                width: 1200,
-                height: 800,
-                deviceScaleFactor: 1,
-            },
-        });
+        const browser = await getBrowserInstance();
 
         console.log('Creating new page...');
         const page = await browser.newPage();
