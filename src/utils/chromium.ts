@@ -1,42 +1,33 @@
-import puppeteerCore, { Browser } from 'puppeteer-core';
-import chromium from '@sparticuz/chromium-min';
-import path from 'path';
+import chrome from 'chrome-aws-lambda';
+import puppeteer, { Page } from 'puppeteer-core';
 
-let browser: Browser | null = null;
-
-const chromiumArgs = [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--disable-gpu',
-    '--disable-dev-shm-usage',
-    '--single-process'
-];
-
-const isDev = process.env.NODE_ENV !== 'production';
-
-export async function getBrowser() {
-    if (browser) return browser;
-
-    try {
-        const executablePath = isDev
+const getOptions = async () => {
+    const isDev = process.env.NODE_ENV === 'development';
+    
+    const options = {
+        args: chrome.args,
+        executablePath: isDev 
             ? process.platform === 'win32'
                 ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
                 : process.platform === 'linux'
-                    ? '/usr/bin/google-chrome'
-                    : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-            : path.join(process.cwd(), '.next/server/chunks/chromium/node_modules/@sparticuz/chromium-min/bin/chromium');
+                ? '/usr/bin/google-chrome'
+                : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+            : await chrome.executablePath,
+        headless: isDev ? true : chrome.headless,
+    };
 
-        browser = await puppeteerCore.launch({
-            args: chromiumArgs,
-            defaultViewport: chromium.defaultViewport,
-            executablePath,
-            headless: true,
-            ignoreHTTPSErrors: true
-        });
-        
-        return browser;
-    } catch (error) {
-        console.error('Error launching browser:', error);
-        throw error;
-    }
+    return options;
+};
+
+export async function getPage() {
+    const options = await getOptions();
+    const browser = await puppeteer.launch(options);
+    const page = await browser.newPage();
+    return page;
+}
+
+export async function closeBrowser(page: Page) {
+    const browser = page.browser();
+    await page.close();
+    await browser.close();
 } 
