@@ -1,5 +1,5 @@
 import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
+import chrome from 'chrome-aws-lambda';
 import fs from 'fs/promises';
 import path from 'path';
 import { ChartData } from '../types/ChartData';
@@ -191,109 +191,76 @@ export const generatePDF = async ({
     try {
         console.log('Starting PDF generation...');
         
-        // Read the template
-        const templatePath = path.join(process.cwd(), 'src/templates/report-template.html');
-        console.log('Template path:', templatePath);
-        let template = await fs.readFile(templatePath, 'utf-8');
-
-        // Read the logo
-        const logoPath = path.join(process.cwd(), 'public/images/logo.png');
-        let logoBase64 = '';
-        try {
-            const logoBuffer = await fs.readFile(logoPath);
-            logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
-        } catch (error) {
-            console.warn('Logo not found:', error);
-        }
-
-        console.log('Preparing template data...');
         const t = translations[language];
         const unit = language === 'en' ? 'sq ft' : 'mq';
 
-        // Replace placeholders in the template
-        template = template.replace('{{LOGO}}', logoBase64);
-        template = template.replace('{{TITLE}}', t.title);
-        template = template.replace('{{TOTAL_AREA_LABEL}}', t.labels.totalArea);
-        template = template.replace('{{TOTAL_AREA}}', `${formatNumber(totalArea, language)} ${unit}`);
-        template = template.replace('{{CALCULATION_DETAILS}}', generateCalculationDetails(details, language));
-        template = template.replace('{{CHART_PLACEHOLDER}}', await generateChartImage(chartData, language));
-        template = template.replace('{{DISCLAIMER}}', t.labels.disclaimer);
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; }
+                    .container { max-width: 800px; margin: 0 auto; }
+                    .header { text-align: center; margin-bottom: 30px; }
+                    .chart-container { width: 100%; height: 400px; margin-bottom: 30px; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                    th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+                    th { background-color: #f8f9fa; }
+                    .disclaimer { font-size: 0.8em; color: #666; margin-top: 20px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>${t.title}</h1>
+                        <p><strong>${t.totalArea}:</strong> ${formatNumber(totalArea, language)} ${unit}</p>
+                    </div>
+                    ${generateCalculationDetails(details, language)}
+                    <div class="chart-container">
+                        ${await generateChartImage(chartData, language)}
+                    </div>
+                    <div class="disclaimer">
+                        ${t.labels.disclaimer}
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
 
         console.log('Launching browser...');
         
-        // Configure Chrome AWS Lambda
-        const executablePath = await chromium.executablePath();
-        console.log('Chrome executable path:', executablePath);
-
         const browser = await puppeteer.launch({
-            args: [
-                ...chromium.args,
-                '--autoplay-policy=user-gesture-required',
-                '--disable-background-networking',
-                '--disable-background-timer-throttling',
-                '--disable-backgrounding-occluded-windows',
-                '--disable-breakpad',
-                '--disable-client-side-phishing-detection',
-                '--disable-component-update',
-                '--disable-default-apps',
-                '--disable-dev-shm-usage',
-                '--disable-domain-reliability',
-                '--disable-extensions',
-                '--disable-features=AudioServiceOutOfProcess',
-                '--disable-hang-monitor',
-                '--disable-ipc-flooding-protection',
-                '--disable-notifications',
-                '--disable-offer-store-unmasked-wallet-cards',
-                '--disable-popup-blocking',
-                '--disable-print-preview',
-                '--disable-prompt-on-repost',
-                '--disable-renderer-backgrounding',
-                '--disable-setuid-sandbox',
-                '--disable-speech-api',
-                '--disable-sync',
-                '--hide-scrollbars',
-                '--ignore-gpu-blacklist',
-                '--metrics-recording-only',
-                '--mute-audio',
-                '--no-default-browser-check',
-                '--no-first-run',
-                '--no-pings',
-                '--no-sandbox',
-                '--no-zygote',
-                '--password-store=basic',
-                '--use-gl=swiftshader',
-                '--use-mock-keychain',
-            ],
+            args: chrome.args,
+            executablePath: await chrome.executablePath,
+            headless: chrome.headless,
             defaultViewport: {
                 width: 1200,
                 height: 800,
                 deviceScaleFactor: 1,
             },
-            executablePath,
-            headless: true,
-            protocolTimeout: 30000,
         });
 
         console.log('Creating new page...');
         const page = await browser.newPage();
         
         console.log('Setting content...');
-        await page.setContent(template, {
+        await page.setContent(html, {
             waitUntil: ['networkidle0', 'load', 'domcontentloaded'],
             timeout: 30000,
         });
 
         console.log('Generating PDF...');
         const pdf = await page.pdf({
-            format: 'A4',
+            format: 'a4',
             printBackground: true,
             margin: {
                 top: '20mm',
                 right: '20mm',
                 bottom: '20mm',
                 left: '20mm'
-            },
-            timeout: 30000,
+            }
         });
 
         console.log('Closing browser...');
