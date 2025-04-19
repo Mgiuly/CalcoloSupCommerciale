@@ -23,6 +23,17 @@ const config: NextConfig = {
     // Handle Puppeteer dependencies
     config.externals = [...(config.externals || []), 'puppeteer', 'puppeteer-core'];
 
+    // Copy Chromium binary to output
+    if (config.output === undefined) {
+      config.output = {};
+    }
+    config.output.copyFiles = [
+      {
+        from: require.resolve('@sparticuz/chromium-min'),
+        to: 'static/chromium'
+      }
+    ];
+
     return config;
   }
 };
