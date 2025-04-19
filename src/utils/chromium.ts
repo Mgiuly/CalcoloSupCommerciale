@@ -1,5 +1,6 @@
 import puppeteerCore, { Browser } from 'puppeteer-core';
 import chromium from '@sparticuz/chromium-min';
+import path from 'path';
 
 let browser: Browser | null = null;
 
@@ -12,22 +13,23 @@ const chromiumArgs = [
 ];
 
 const isDev = process.env.NODE_ENV !== 'production';
-const CHROMIUM_PATH = 'https://github.com/Sparticuz/chromium/releases/download/v121.0.0/chromium-v121.0.0-pack.tar';
 
 export async function getBrowser() {
     if (browser) return browser;
 
     try {
+        const executablePath = isDev
+            ? process.platform === 'win32'
+                ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+                : process.platform === 'linux'
+                    ? '/usr/bin/google-chrome'
+                    : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+            : path.join(process.cwd(), '.next/server/chunks/chromium/node_modules/@sparticuz/chromium-min/bin/chromium');
+
         browser = await puppeteerCore.launch({
             args: chromiumArgs,
             defaultViewport: chromium.defaultViewport,
-            executablePath: isDev 
-                ? process.platform === 'win32'
-                    ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-                    : process.platform === 'linux'
-                        ? '/usr/bin/google-chrome'
-                        : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-                : await chromium.executablePath(CHROMIUM_PATH),
+            executablePath,
             headless: true,
             ignoreHTTPSErrors: true
         });
