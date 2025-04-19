@@ -1,4 +1,4 @@
-import puppeteer, { PaperFormat } from 'puppeteer-core';
+import { PaperFormat } from 'puppeteer-core';
 import fs from 'fs/promises';
 import path from 'path';
 import { ChartData } from '../types/ChartData';
