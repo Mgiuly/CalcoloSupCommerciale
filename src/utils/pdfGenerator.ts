@@ -1,5 +1,5 @@
-import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 import fs from 'fs/promises';
 import path from 'path';
 import { ChartData } from '../types/ChartData';
