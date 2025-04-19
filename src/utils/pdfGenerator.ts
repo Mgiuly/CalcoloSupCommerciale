@@ -1,4 +1,5 @@
-import puppeteer from 'puppeteer';
+import chromium from '@sparticuz/chromium';
+import puppeteer from 'puppeteer-core';
 import fs from 'fs/promises';
 import path from 'path';
 import { ChartData } from '../types/ChartData';
@@ -198,80 +199,49 @@ export const generatePDF = async ({
         try {
             const logoBuffer = await fs.readFile(logoPath);
             logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
-        } catch {
-            console.warn('Logo not found, using fallback text');
-            logoBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+        } catch (error) {
+            console.warn('Logo not found, continuing without it');
         }
-        
-        // Generate chart image
-        const chartImage = await generateChartImage(chartData, language);
 
-        // Get unit
+        const t = translations[language];
         const unit = language === 'en' ? 'sq ft' : 'mq';
 
-        // Replace placeholders and translations
-        template = template
-            .replace(/{{t\.([^}]+)}}/g, (match: string, key: string) => {
-                const keys = key.split('.');
-                let value: unknown = translations[language];
-                for (const k of keys) {
-                    if (value && typeof value === 'object' && k in value) {
-                        value = (value as Record<string, unknown>)[k];
-                    } else {
-                        return key;
-                    }
-                }
-                return String(value);
-            })
-            .replace('{{LOGO_BASE64}}', logoBase64)
-            .replace('{{lang}}', language)
-            .replace('{{unit}}', unit)
-            .replace('{{TOTAL_AREA}}', formatNumber(totalArea, language))
-            .replace('{{CALCULATION_DETAILS}}', generateCalculationDetails(details, language))
-            .replace('{{CHART_IMAGE}}', chartImage);
+        // Replace placeholders in the template
+        template = template.replace('{{LOGO}}', logoBase64);
+        template = template.replace('{{TITLE}}', t.title);
+        template = template.replace('{{TOTAL_AREA_LABEL}}', t.labels.totalArea);
+        template = template.replace('{{TOTAL_AREA}}', `${formatNumber(totalArea, language)} ${unit}`);
+        template = template.replace('{{CALCULATION_DETAILS}}', generateCalculationDetails(details, language));
+        template = template.replace('{{CHART_PLACEHOLDER}}', await generateChartImage(chartData, language));
+        template = template.replace('{{DISCLAIMER}}', t.labels.disclaimer);
 
-        // Launch puppeteer with better quality settings
+        // Launch browser with AWS Lambda Chrome
         const browser = await puppeteer.launch({
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
+            args: chromium.args,
+            defaultViewport: chromium.defaultViewport,
+            executablePath: await chromium.executablePath(),
+            headless: chromium.headless,
         });
-        
+
         const page = await browser.newPage();
-
-        // Set viewport for better rendering
-        await page.setViewport({
-            width: 1200,
-            height: 1600,
-            deviceScaleFactor: 2
-        });
-
-        // Enable better quality rendering
         await page.setContent(template, {
             waitUntil: ['networkidle0', 'load', 'domcontentloaded']
         });
 
-        // Wait for chart to render
-        await page.waitForFunction(() => {
-            const canvas = document.querySelector('canvas');
-            return canvas && canvas.toDataURL() !== 'data:,';
-        }, { timeout: 5000 });
-
-        // Generate PDF with better quality
+        // Generate PDF
         const pdf = await page.pdf({
             format: 'A4',
-            margin: {
-                top: '15mm',
-                right: '15mm',
-                bottom: '15mm',
-                left: '15mm'
-            },
             printBackground: true,
-            preferCSSPageSize: true,
-            scale: 0.8 // Slightly reduce the scale to ensure everything fits
+            margin: {
+                top: '20mm',
+                right: '20mm',
+                bottom: '20mm',
+                left: '20mm'
+            }
         });
 
         await browser.close();
-        return pdf as Buffer;
+        return pdf;
     } catch (error) {
         console.error('Error generating PDF:', error);
         throw error;

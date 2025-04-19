@@ -40,25 +40,40 @@ export async function POST(request: Request) {
         const selectedLanguage = language;
         
         if (format === 'pdf') {
-            const pdf = await generatePDF({
-                totalArea: data.totalArea,
-                details: Object.entries(data.details).map(([name, detail]) => ({
-                    name,
-                    baseArea: detail.area,
-                    coefficient: detail.coefficient,
-                    commercialArea: detail.commercialArea,
-                    tiers: detail.tiers
-                })),
-                chartData: data.chartData,
-                language: selectedLanguage
-            });
+            try {
+                const pdf = await generatePDF({
+                    totalArea: data.totalArea,
+                    details: Object.entries(data.details).map(([name, detail]) => ({
+                        name,
+                        baseArea: detail.area,
+                        coefficient: detail.coefficient,
+                        commercialArea: detail.commercialArea,
+                        tiers: detail.tiers
+                    })),
+                    chartData: data.chartData,
+                    language: selectedLanguage
+                });
 
-            return new NextResponse(pdf, {
-                headers: {
-                    'Content-Type': 'application/pdf',
-                    'Content-Disposition': `attachment; filename=report_${selectedLanguage}.pdf`
+                if (!pdf) {
+                    throw new Error('PDF generation failed - no data returned');
                 }
-            });
+
+                return new NextResponse(pdf, {
+                    headers: {
+                        'Content-Type': 'application/pdf',
+                        'Content-Disposition': `attachment; filename=report_${selectedLanguage}.pdf`
+                    }
+                });
+            } catch (pdfError) {
+                console.error('PDF Generation error:', pdfError);
+                return NextResponse.json(
+                    { 
+                        error: 'Failed to generate PDF',
+                        details: process.env.NODE_ENV === 'development' ? pdfError.message : undefined
+                    }, 
+                    { status: 500 }
+                );
+            }
         } else {
             // Generate text report
             const t = translations[selectedLanguage];
@@ -105,7 +120,13 @@ export async function POST(request: Request) {
             });
         }
     } catch (error) {
-        console.error('Error generating report:', error);
-        return NextResponse.json({ error: 'Failed to generate report' }, { status: 500 });
+        console.error('Request processing error:', error);
+        return NextResponse.json(
+            { 
+                error: 'Failed to process request',
+                details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            }, 
+            { status: 400 }
+        );
     }
 } 
