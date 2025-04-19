@@ -5,14 +5,14 @@ const config: NextConfig = {
   output: 'standalone',
   compress: true,
   env: {
-    CHROME_EXECUTABLE_PATH: process.env.CHROME_EXECUTABLE_PATH,
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   },
   experimental: {
+    serverComponentsExternalPackages: ['chrome-aws-lambda', 'puppeteer-core', 'puppeteer'],
     serverActions: {
       bodySizeLimit: '2mb',
       allowedOrigins: ['localhost:3000', 'localhost:3002']
-    },
-    serverComponentsExternalPackages: ["puppeteer-core"],
+    }
   },
   webpack: (config) => {
     // Exclude chrome-aws-lambda source map files
