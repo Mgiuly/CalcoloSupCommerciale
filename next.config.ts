@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     optimizeCss: true,
+  },
+  env: {
+    VERCEL_EDGE_FUNCTION: '1'
   }
 };
 

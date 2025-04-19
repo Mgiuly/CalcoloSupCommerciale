@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { generatePDF } from '../../../utils/pdfGenerator';
 import { translations } from '../../../utils/translations';
 
+export const runtime = 'edge';
+export const maxDuration = 60;
+
 type Language = 'en' | 'it';
 
 interface Detail {
@@ -35,18 +38,19 @@ interface RequestData {
 }
 
 export async function POST(request: Request) {
-    console.log('Starting report generation request...');
+    console.log('Starting report generation request in Edge runtime...');
     try {
         const { format, data, language } = await request.json() as RequestData;
         const selectedLanguage = language;
         
         if (format === 'pdf') {
-            console.log('Processing PDF format request...');
+            console.log('Processing PDF format request in Edge runtime...');
             try {
                 console.log('Calling PDF generator with data:', {
                     totalArea: data.totalArea,
                     detailsCount: Object.keys(data.details).length,
-                    language: selectedLanguage
+                    language: selectedLanguage,
+                    runtime: 'edge'
                 });
 
                 const pdf = await generatePDF({
@@ -63,35 +67,42 @@ export async function POST(request: Request) {
                 });
 
                 if (!pdf) {
-                    console.error('PDF generation returned null or undefined');
+                    console.error('PDF generation returned null or undefined in Edge runtime');
                     throw new Error('PDF generation failed - no data returned');
                 }
 
-                console.log('PDF generated successfully, sending response...');
+                console.log('PDF generated successfully in Edge runtime, sending response...');
                 return new NextResponse(pdf, {
                     headers: {
                         'Content-Type': 'application/pdf',
-                        'Content-Disposition': `attachment; filename=report_${selectedLanguage}.pdf`
+                        'Content-Disposition': `attachment; filename=report_${selectedLanguage}.pdf`,
+                        'Cache-Control': 'no-store'
                     }
                 });
             } catch (pdfError: unknown) {
-                console.error('PDF Generation error details:');
-                if (pdfError instanceof Error) {
-                    console.error('Error name:', pdfError.name);
-                    console.error('Error message:', pdfError.message);
-                    console.error('Error stack:', pdfError.stack);
-                } else {
-                    console.error('Unknown error type:', pdfError);
-                }
+                console.error('PDF Generation error in Edge runtime:');
+                console.error(JSON.stringify({
+                    error: pdfError instanceof Error ? {
+                        name: pdfError.name,
+                        message: pdfError.message,
+                        stack: pdfError.stack
+                    } : String(pdfError)
+                }, null, 2));
                 
                 return NextResponse.json(
                     { 
                         error: 'Failed to generate PDF',
                         details: process.env.NODE_ENV === 'development' 
                             ? (pdfError instanceof Error ? pdfError.message : String(pdfError)) 
-                            : undefined
+                            : undefined,
+                        runtime: 'edge'
                     }, 
-                    { status: 500 }
+                    { 
+                        status: 500,
+                        headers: {
+                            'Cache-Control': 'no-store'
+                        }
+                    }
                 );
             }
         } else {
@@ -140,23 +151,29 @@ export async function POST(request: Request) {
             });
         }
     } catch (error: unknown) {
-        console.error('Request processing error details:');
-        if (error instanceof Error) {
-            console.error('Error name:', error.name);
-            console.error('Error message:', error.message);
-            console.error('Error stack:', error.stack);
-        } else {
-            console.error('Unknown error type:', error);
-        }
+        console.error('Request processing error in Edge runtime:');
+        console.error(JSON.stringify({
+            error: error instanceof Error ? {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            } : String(error)
+        }, null, 2));
         
         return NextResponse.json(
             { 
                 error: 'Failed to process request',
                 details: process.env.NODE_ENV === 'development' 
                     ? (error instanceof Error ? error.message : String(error)) 
-                    : undefined
+                    : undefined,
+                runtime: 'edge'
             }, 
-            { status: 400 }
+            { 
+                status: 400,
+                headers: {
+                    'Cache-Control': 'no-store'
+                }
+            }
         );
     }
 } 
