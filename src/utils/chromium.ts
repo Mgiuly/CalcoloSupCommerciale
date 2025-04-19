@@ -1,8 +1,8 @@
-import puppeteerCore from 'puppeteer-core';
+import puppeteerCore, { Browser } from 'puppeteer-core';
 import puppeteer from 'puppeteer';
 import chromium from '@sparticuz/chromium-min';
 
-let browser: any = null;
+let browser: Browser | null = null;
 
 const chromiumArgs = [
     '--no-sandbox',
@@ -31,7 +31,7 @@ export async function getBrowser() {
             args: chromiumArgs,
             executablePath: localChromePath,
             headless: true
-        });
+        }) as unknown as Browser;
     }
 
     return browser;

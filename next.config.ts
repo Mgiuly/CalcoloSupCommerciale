@@ -5,10 +5,9 @@ const config: NextConfig = {
   output: 'standalone',
   compress: true,
   env: {
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_VERCEL_URL: process.env.VERCEL_URL
   },
   experimental: {
-    serverComponentsExternalPackages: ['chrome-aws-lambda', 'puppeteer-core', 'puppeteer'],
     serverActions: {
       bodySizeLimit: '2mb',
       allowedOrigins: ['localhost:3000', 'localhost:3002']
