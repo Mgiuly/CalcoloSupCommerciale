@@ -1,22 +1,19 @@
-import type { NextConfig } from "next";
+import { NextConfig } from 'next';
 import withBundleAnalyzer from '@next/bundle-analyzer';
 
-const nextConfig: NextConfig = {
+const config: NextConfig = {
   output: 'standalone',
   compress: true,
-  poweredByHeader: false,
-  reactStrictMode: true,
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
+  env: {
+    NODE_ENV: process.env.NODE_ENV || 'development'
   },
   experimental: {
-    optimizeCss: true,
-  },
-  env: {
-    VERCEL_EDGE_FUNCTION: '1'
+    serverActions: {
+      bodySizeLimit: '2mb'
+    }
   }
 };
 
 export default withBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
-})(nextConfig);
+})(config);
