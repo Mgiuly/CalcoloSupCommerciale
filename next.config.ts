@@ -12,6 +12,7 @@ const config: NextConfig = {
       bodySizeLimit: '2mb',
       allowedOrigins: ['localhost:3000', 'localhost:3002']
     },
+    serverComponentsExternalPackages: ["puppeteer-core"],
   },
   webpack: (config) => {
     // Exclude chrome-aws-lambda source map files
