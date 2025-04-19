@@ -1,4 +1,3 @@
-import { PaperFormat } from 'puppeteer-core';
 import fs from 'fs/promises';
 import path from 'path';
 import { ChartData } from '../types/ChartData';
@@ -242,7 +241,7 @@ export const generatePDF = async ({
 
         console.log('Generating PDF...');
         const pdf = await page.pdf({
-            format: 'a4' as PaperFormat,
+            format: 'a4',
             printBackground: true,
             margin: {
                 top: '20mm',
@@ -286,28 +285,27 @@ export const generateHTML = async ({
         let logoBase64 = '';
         try {
             const logoBuffer = await fs.readFile(logoPath);
-            logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`
-        } catch (error) {
-            console.error('Error reading logo:', error);
+            logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+        } catch {
+            console.warn('Logo not found, using fallback text');
+            logoBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
         }
+        
+        // Generate chart image
+        const chartImage = await generateChartImage(chartData, language);
 
-        // Replace placeholders in the template with actual data
-        template = template.replace('{{totalArea}}', formatNumber(totalArea, language));
-        template = template.replace('{{details}}', generateCalculationDetails(details, language));
-        template = template.replace('{{chartImage}}', await generateChartImage(chartData, language));
-        template = template.replace('{{disclaimer}}', translations[language].labels.disclaimer);
-        template = template.replace('{{logo}}', logoBase64);
+        // Replace placeholders
+        template = template
+            .replace('{{LOGO_BASE64}}', logoBase64)
+            .replace('{{lang}}', language)
+            .replace('{{unit}}', language === 'en' ? 'sq ft' : 'mq')
+            .replace('{{TOTAL_AREA}}', formatNumber(totalArea, language))
+            .replace('{{CALCULATION_DETAILS}}', generateCalculationDetails(details, language))
+            .replace('{{CHART_IMAGE}}', chartImage);
 
         return template;
-    } catch (error: unknown) {
-        console.error('Detailed error in HTML generation:');
-        if (error instanceof Error) {
-            console.error('Error name:', error.name);
-            console.error('Error message:', error.message);
-            console.error('Error stack:', error.stack);
-        } else {
-            console.error('Unknown error type:', error);
-        }
+    } catch (error) {
+        console.error('Error generating HTML:', error);
         throw error;
     }
 };
