@@ -11,13 +11,7 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     optimizeCss: true,
-  },
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals = [...(config.externals || []), '@sparticuz/chromium'];
-    }
-    return config;
-  },
+  }
 };
 
 export default withBundleAnalyzer({
