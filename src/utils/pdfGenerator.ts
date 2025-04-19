@@ -1,5 +1,5 @@
 import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium-min';
+import chrome from 'chrome-aws-lambda';
 import fs from 'fs/promises';
 import path from 'path';
 import { ChartData } from '../types/ChartData';
@@ -187,27 +187,22 @@ const getBrowserInstance = async () => {
     const isVercel = process.env.VERCEL === '1';
 
     if (isVercel) {
-        // Running on Vercel, use @sparticuz/chromium-min
+        // Running on Vercel, use chrome-aws-lambda
         return puppeteer.launch({
             args: [
-                ...chromium.args,
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--no-first-run',
-                '--no-zygote',
                 '--single-process',
-                '--disable-extensions'
+                '--no-zygote',
+                '--disable-gpu'
             ],
             defaultViewport: {
                 width: 1200,
                 height: 800,
                 deviceScaleFactor: 1,
             },
-            executablePath: await chromium.executablePath(
-                'https://github.com/Sparticuz/chromium/releases/download/v121.0.0/chromium-v121.0.0-pack.tar'
-            ),
+            executablePath: await chrome.executablePath,
             headless: true,
             ignoreHTTPSErrors: true,
         });
