@@ -1,4 +1,5 @@
 import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 import fs from 'fs/promises';
 import path from 'path';
 import { ChartData } from '../types/ChartData';
@@ -186,20 +187,13 @@ const getBrowserInstance = async () => {
     const isVercel = process.env.VERCEL === '1';
 
     if (isVercel) {
-        // Running on Vercel, use their Chrome
+        // Running on Vercel, use @sparticuz/chromium
         return puppeteer.launch({
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--no-first-run',
-                '--no-zygote',
-                '--single-process',
-                '--disable-gpu'
-            ],
-            executablePath: '/var/task/node_modules/puppeteer-core/.local-chromium/linux-119.0.6045.105/chrome-linux64/chrome',
-            headless: true
+            args: chromium.args,
+            defaultViewport: chromium.defaultViewport,
+            executablePath: await chromium.executablePath(),
+            headless: true,
+            ignoreHTTPSErrors: true,
         });
     } else {
         // Running locally
