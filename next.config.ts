@@ -11,6 +11,13 @@ const config: NextConfig = {
     serverActions: {
       bodySizeLimit: '2mb'
     }
+  },
+  typescript: {
+    ignoreBuildErrors: false
+  },
+  swcMinify: true,
+  images: {
+    unoptimized: true
   }
 };
 
