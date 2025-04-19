@@ -4,9 +4,6 @@ import withBundleAnalyzer from '@next/bundle-analyzer';
 const config: NextConfig = {
   output: 'standalone',
   compress: true,
-  env: {
-    NODE_ENV: process.env.NODE_ENV || 'development'
-  },
   experimental: {
     serverActions: {
       bodySizeLimit: '2mb'
@@ -15,7 +12,6 @@ const config: NextConfig = {
   typescript: {
     ignoreBuildErrors: false
   },
-  swcMinify: true,
   images: {
     unoptimized: true
   }
